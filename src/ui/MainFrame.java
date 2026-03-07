@@ -2,9 +2,9 @@ package ui;
 
 import model.Priority;
 import model.Status;
-import model.Task;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDateTime;
@@ -21,10 +21,12 @@ public class MainFrame extends JFrame {
     private JButton deleteButton;
     private JButton doneButton;
 
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
     public MainFrame() {
 
         setTitle("Todo List with Reminder");
-        setSize(950, 550);
+        setSize(900, 500);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
@@ -39,25 +41,51 @@ public class MainFrame extends JFrame {
         };
 
         table = new JTable(tableModel);
-        table.setFillsViewportHeight(true);
         table.setRowHeight(28);
+        table.setFillsViewportHeight(true);
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        add(scrollPane, BorderLayout.CENTER);
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(
+                    JTable table, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int column) {
 
-        JPanel panel = new JPanel();
+                Component c = super.getTableCellRendererComponent(
+                        table, value, isSelected, hasFocus, row, column
+                );
+
+                String status = table.getValueAt(row, 4).toString();
+
+                if (isSelected) {
+                    c.setBackground(new Color(220, 235, 255));
+                    c.setForeground(Color.BLACK);
+                } else if (status.equals("OVERDUE")) {
+                    c.setBackground(new Color(255, 180, 180));
+                    c.setForeground(Color.BLACK);
+                } else {
+                    c.setBackground(Color.WHITE);
+                    c.setForeground(Color.BLACK);
+                }
+
+                return c;
+            }
+        });
+
+        add(new JScrollPane(table), BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel();
 
         addButton = new JButton("Add");
         editButton = new JButton("Edit");
         deleteButton = new JButton("Delete");
         doneButton = new JButton("Done");
 
-        panel.add(addButton);
-        panel.add(editButton);
-        panel.add(deleteButton);
-        panel.add(doneButton);
+        buttonPanel.add(addButton);
+        buttonPanel.add(editButton);
+        buttonPanel.add(deleteButton);
+        buttonPanel.add(doneButton);
 
-        add(panel, BorderLayout.SOUTH);
+        add(buttonPanel, BorderLayout.SOUTH);
 
         addButton.addActionListener(e -> showTaskDialog(-1));
 
@@ -91,6 +119,8 @@ public class MainFrame extends JFrame {
             }
         });
 
+        startReminder();
+
         setVisible(true);
     }
 
@@ -115,9 +145,13 @@ public class MainFrame extends JFrame {
             descriptionField.setText(tableModel.getValueAt(rowIndex, 1).toString());
 
             try {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-                LocalDateTime dateTime = LocalDateTime.parse(tableModel.getValueAt(rowIndex, 2).toString(), formatter);
-                java.util.Date date = java.util.Date.from(dateTime.atZone(ZoneId.systemDefault()).toInstant());
+                LocalDateTime dateTime = LocalDateTime.parse(
+                        tableModel.getValueAt(rowIndex, 2).toString(),
+                        formatter
+                );
+                java.util.Date date = java.util.Date.from(
+                        dateTime.atZone(ZoneId.systemDefault()).toInstant()
+                );
                 dueDateSpinner.setValue(date);
             } catch (Exception ignored) {
             }
@@ -158,7 +192,7 @@ public class MainFrame extends JFrame {
                     ZoneId.systemDefault()
             );
 
-            String formattedDate = dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            String formattedDate = dateTime.format(formatter);
             Priority priority = (Priority) priorityBox.getSelectedItem();
             Status status = (Status) statusBox.getSelectedItem();
 
@@ -187,6 +221,35 @@ public class MainFrame extends JFrame {
         dialog.add(cancelButton);
 
         dialog.setVisible(true);
+    }
+
+    private void startReminder() {
+        Timer timer = new Timer(60000, e -> checkOverdueTasks());
+        timer.start();
+        checkOverdueTasks();
+    }
+
+    private void checkOverdueTasks() {
+        LocalDateTime now = LocalDateTime.now();
+
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            try {
+                String dueDateText = tableModel.getValueAt(i, 2).toString();
+                String statusText = tableModel.getValueAt(i, 4).toString();
+
+                LocalDateTime dueDate = LocalDateTime.parse(dueDateText, formatter);
+
+                if (dueDate.isBefore(now)
+                        && !statusText.equals("DONE")
+                        && !statusText.equals("OVERDUE")) {
+
+                    tableModel.setValueAt(Status.OVERDUE, i, 4);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        table.repaint();
     }
 
     public static void main(String[] args) {
