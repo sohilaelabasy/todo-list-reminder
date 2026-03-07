@@ -4,6 +4,7 @@ import model.Priority;
 import model.Status;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -26,10 +27,26 @@ public class MainFrame extends JFrame {
     public MainFrame() {
 
         setTitle("Todo List with Reminder");
-        setSize(900, 500);
+        setSize(950, 550);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
+        setLayout(new BorderLayout(10, 10));
+
+        Font titleFont = new Font("Arial", Font.BOLD, 24);
+        Font buttonFont = new Font("Arial", Font.BOLD, 14);
+        Font tableFont = new Font("Arial", Font.PLAIN, 14);
+        Font labelFont = new Font("Arial", Font.BOLD, 13);
+
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setBackground(new Color(245, 248, 255));
+        topPanel.setBorder(new EmptyBorder(15, 20, 10, 20));
+
+        JLabel titleLabel = new JLabel("Todo List with Reminder", SwingConstants.CENTER);
+        titleLabel.setFont(titleFont);
+        titleLabel.setForeground(new Color(40, 60, 120));
+        topPanel.add(titleLabel, BorderLayout.CENTER);
+
+        add(topPanel, BorderLayout.NORTH);
 
         String[] columns = {"Title", "Description", "Due Date", "Priority", "Status"};
 
@@ -41,7 +58,15 @@ public class MainFrame extends JFrame {
         };
 
         table = new JTable(tableModel);
-        table.setRowHeight(28);
+        table.setRowHeight(30);
+        table.setFont(tableFont);
+        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 14));
+        table.getTableHeader().setBackground(new Color(220, 230, 250));
+        table.getTableHeader().setForeground(new Color(30, 30, 30));
+        table.setSelectionBackground(new Color(210, 225, 255));
+        table.setSelectionForeground(Color.BLACK);
+        table.setGridColor(new Color(230, 230, 230));
+        table.setShowVerticalLines(false);
         table.setFillsViewportHeight(true);
 
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
@@ -57,11 +82,11 @@ public class MainFrame extends JFrame {
                 String status = table.getValueAt(row, 4).toString();
 
                 if (isSelected) {
-                    c.setBackground(new Color(220, 235, 255));
+                    c.setBackground(new Color(210, 225, 255));
                     c.setForeground(Color.BLACK);
                 } else if (status.equals("OVERDUE")) {
-                    c.setBackground(new Color(255, 180, 180));
-                    c.setForeground(Color.BLACK);
+                    c.setBackground(new Color(255, 204, 204));
+                    c.setForeground(new Color(120, 0, 0));
                 } else {
                     c.setBackground(Color.WHITE);
                     c.setForeground(Color.BLACK);
@@ -71,14 +96,17 @@ public class MainFrame extends JFrame {
             }
         });
 
-        add(new JScrollPane(table), BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(new EmptyBorder(0, 20, 0, 20));
+        add(scrollPane, BorderLayout.CENTER);
 
-        JPanel buttonPanel = new JPanel();
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 12));
+        buttonPanel.setBackground(new Color(245, 248, 255));
 
-        addButton = new JButton("Add");
-        editButton = new JButton("Edit");
-        deleteButton = new JButton("Delete");
-        doneButton = new JButton("Done");
+        addButton = createStyledButton("Add", new Color(76, 175, 80), buttonFont);
+        editButton = createStyledButton("Edit", new Color(33, 150, 243), buttonFont);
+        deleteButton = createStyledButton("Delete", new Color(244, 67, 54), buttonFont);
+        doneButton = createStyledButton("Done", new Color(139, 128,0 ), buttonFont);
 
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
@@ -121,14 +149,38 @@ public class MainFrame extends JFrame {
 
         startReminder();
 
+        getContentPane().setBackground(Color.WHITE);
         setVisible(true);
+    }
+
+    private JButton createStyledButton(String text, Color color, Font font) {
+        JButton button = new JButton(text);
+        button.setFont(font);
+        button.setBackground(color);
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setPreferredSize(new Dimension(120, 38));
+        return button;
     }
 
     private void showTaskDialog(int rowIndex) {
         JDialog dialog = new JDialog(this, rowIndex == -1 ? "Add Task" : "Edit Task", true);
-        dialog.setSize(400, 300);
-        dialog.setLayout(new GridLayout(6, 2, 5, 5));
+        dialog.setSize(430, 340);
         dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.getContentPane().setBackground(Color.WHITE);
+
+        Font labelFont = new Font("Arial", Font.BOLD, 13);
+        Font fieldFont = new Font("Arial", Font.PLAIN, 13);
+
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(Color.WHITE);
+        formPanel.setBorder(new EmptyBorder(15, 20, 10, 20));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
         JTextField titleField = new JTextField();
         JTextField descriptionField = new JTextField();
@@ -139,6 +191,12 @@ public class MainFrame extends JFrame {
 
         JComboBox<Priority> priorityBox = new JComboBox<>(Priority.values());
         JComboBox<Status> statusBox = new JComboBox<>(Status.values());
+
+        titleField.setFont(fieldFont);
+        descriptionField.setFont(fieldFont);
+        dueDateSpinner.setFont(fieldFont);
+        priorityBox.setFont(fieldFont);
+        statusBox.setFont(fieldFont);
 
         if (rowIndex != -1) {
             titleField.setText(tableModel.getValueAt(rowIndex, 0).toString());
@@ -160,23 +218,17 @@ public class MainFrame extends JFrame {
             statusBox.setSelectedItem(tableModel.getValueAt(rowIndex, 4));
         }
 
-        dialog.add(new JLabel("Title:"));
-        dialog.add(titleField);
+        addFormRow(formPanel, gbc, 0, "Title:", titleField, labelFont);
+        addFormRow(formPanel, gbc, 1, "Description:", descriptionField, labelFont);
+        addFormRow(formPanel, gbc, 2, "Due Date:", dueDateSpinner, labelFont);
+        addFormRow(formPanel, gbc, 3, "Priority:", priorityBox, labelFont);
+        addFormRow(formPanel, gbc, 4, "Status:", statusBox, labelFont);
 
-        dialog.add(new JLabel("Description:"));
-        dialog.add(descriptionField);
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
+        actionPanel.setBackground(Color.WHITE);
 
-        dialog.add(new JLabel("Due Date:"));
-        dialog.add(dueDateSpinner);
-
-        dialog.add(new JLabel("Priority:"));
-        dialog.add(priorityBox);
-
-        dialog.add(new JLabel("Status:"));
-        dialog.add(statusBox);
-
-        JButton saveButton = new JButton("Save");
-        JButton cancelButton = new JButton("Cancel");
+        JButton saveButton = createStyledButton("Save", new Color(76, 175, 80), new Font("Arial", Font.BOLD, 13));
+        JButton cancelButton = createStyledButton("Cancel", new Color(158, 158, 158), new Font("Arial", Font.BOLD, 13));
 
         saveButton.addActionListener(e -> {
             String title = titleField.getText().trim();
@@ -217,10 +269,29 @@ public class MainFrame extends JFrame {
 
         cancelButton.addActionListener(e -> dialog.dispose());
 
-        dialog.add(saveButton);
-        dialog.add(cancelButton);
+        actionPanel.add(saveButton);
+        actionPanel.add(cancelButton);
+
+        dialog.add(formPanel, BorderLayout.CENTER);
+        dialog.add(actionPanel, BorderLayout.SOUTH);
 
         dialog.setVisible(true);
+    }
+
+    private void addFormRow(JPanel panel, GridBagConstraints gbc, int row,
+                            String labelText, JComponent field, Font labelFont) {
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 0.2;
+
+        JLabel label = new JLabel(labelText);
+        label.setFont(labelFont);
+        label.setForeground(new Color(50, 50, 50));
+        panel.add(label, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 0.8;
+        panel.add(field, gbc);
     }
 
     private void startReminder() {
