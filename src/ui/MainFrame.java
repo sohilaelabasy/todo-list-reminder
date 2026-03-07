@@ -2,6 +2,8 @@ package ui;
 
 import model.Priority;
 import model.Status;
+import model.Task;
+import service.TaskManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -23,6 +25,7 @@ public class MainFrame extends JFrame {
     private JButton doneButton;
 
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private final TaskManager taskManager = new TaskManager();
 
     public MainFrame() {
 
@@ -106,7 +109,7 @@ public class MainFrame extends JFrame {
         addButton = createStyledButton("Add", new Color(76, 175, 80), buttonFont);
         editButton = createStyledButton("Edit", new Color(33, 150, 243), buttonFont);
         deleteButton = createStyledButton("Delete", new Color(244, 67, 54), buttonFont);
-        doneButton = createStyledButton("Done", new Color(139, 128,0 ), buttonFont);
+        doneButton = createStyledButton("Done", new Color(139, 128, 0), buttonFont);
 
         buttonPanel.add(addButton);
         buttonPanel.add(editButton);
@@ -133,7 +136,9 @@ public class MainFrame extends JFrame {
             if (selectedRow == -1) {
                 JOptionPane.showMessageDialog(this, "Please select a task first");
             } else {
-                tableModel.removeRow(selectedRow);
+                Task task = taskManager.getAllTasks().get(selectedRow);
+                taskManager.deleteTask(task);
+                refreshTable();
             }
         });
 
@@ -143,7 +148,9 @@ public class MainFrame extends JFrame {
             if (selectedRow == -1) {
                 JOptionPane.showMessageDialog(this, "Please select a task first");
             } else {
-                tableModel.setValueAt(Status.DONE, selectedRow, 4);
+                Task task = taskManager.getAllTasks().get(selectedRow);
+                taskManager.updateTaskStatus(task, Status.DONE);
+                refreshTable();
             }
         });
 
@@ -199,23 +206,21 @@ public class MainFrame extends JFrame {
         statusBox.setFont(fieldFont);
 
         if (rowIndex != -1) {
-            titleField.setText(tableModel.getValueAt(rowIndex, 0).toString());
-            descriptionField.setText(tableModel.getValueAt(rowIndex, 1).toString());
+            Task task = taskManager.getAllTasks().get(rowIndex);
+
+            titleField.setText(task.getTitle());
+            descriptionField.setText(task.getDescription());
 
             try {
-                LocalDateTime dateTime = LocalDateTime.parse(
-                        tableModel.getValueAt(rowIndex, 2).toString(),
-                        formatter
-                );
                 java.util.Date date = java.util.Date.from(
-                        dateTime.atZone(ZoneId.systemDefault()).toInstant()
+                        task.getDueDateAndTime().atZone(ZoneId.systemDefault()).toInstant()
                 );
                 dueDateSpinner.setValue(date);
             } catch (Exception ignored) {
             }
 
-            priorityBox.setSelectedItem(tableModel.getValueAt(rowIndex, 3));
-            statusBox.setSelectedItem(tableModel.getValueAt(rowIndex, 4));
+            priorityBox.setSelectedItem(task.getPriority());
+            statusBox.setSelectedItem(task.getStatus());
         }
 
         addFormRow(formPanel, gbc, 0, "Title:", titleField, labelFont);
@@ -244,26 +249,18 @@ public class MainFrame extends JFrame {
                     ZoneId.systemDefault()
             );
 
-            String formattedDate = dateTime.format(formatter);
             Priority priority = (Priority) priorityBox.getSelectedItem();
             Status status = (Status) statusBox.getSelectedItem();
 
             if (rowIndex == -1) {
-                tableModel.addRow(new Object[]{
-                        title,
-                        description,
-                        formattedDate,
-                        priority,
-                        status
-                });
+                Task task = new Task(title, description, dateTime, priority, status);
+                taskManager.addTask(task);
             } else {
-                tableModel.setValueAt(title, rowIndex, 0);
-                tableModel.setValueAt(description, rowIndex, 1);
-                tableModel.setValueAt(formattedDate, rowIndex, 2);
-                tableModel.setValueAt(priority, rowIndex, 3);
-                tableModel.setValueAt(status, rowIndex, 4);
+                Task task = taskManager.getAllTasks().get(rowIndex);
+                taskManager.editTask(task, title, description, dateTime, priority, status);
             }
 
+            refreshTable();
             dialog.dispose();
         });
 
@@ -295,29 +292,27 @@ public class MainFrame extends JFrame {
     }
 
     private void startReminder() {
-        Timer timer = new Timer(60000, e -> checkOverdueTasks());
+        Timer timer = new Timer(60000, e -> {
+            taskManager.checkOverDue();
+            refreshTable();
+        });
         timer.start();
-        checkOverdueTasks();
+
+        taskManager.checkOverDue();
+        refreshTable();
     }
 
-    private void checkOverdueTasks() {
-        LocalDateTime now = LocalDateTime.now();
+    private void refreshTable() {
+        tableModel.setRowCount(0);
 
-        for (int i = 0; i < tableModel.getRowCount(); i++) {
-            try {
-                String dueDateText = tableModel.getValueAt(i, 2).toString();
-                String statusText = tableModel.getValueAt(i, 4).toString();
-
-                LocalDateTime dueDate = LocalDateTime.parse(dueDateText, formatter);
-
-                if (dueDate.isBefore(now)
-                        && !statusText.equals("DONE")
-                        && !statusText.equals("OVERDUE")) {
-
-                    tableModel.setValueAt(Status.OVERDUE, i, 4);
-                }
-            } catch (Exception ignored) {
-            }
+        for (Task task : taskManager.getAllTasks()) {
+            tableModel.addRow(new Object[]{
+                    task.getTitle(),
+                    task.getDescription(),
+                    task.getDueDateAndTime().format(formatter),
+                    task.getPriority(),
+                    task.getStatus()
+            });
         }
 
         table.repaint();
