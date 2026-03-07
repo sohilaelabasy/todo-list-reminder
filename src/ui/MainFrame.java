@@ -9,6 +9,11 @@ public class MainFrame extends JFrame {
     private JTable table;
     private DefaultTableModel tableModel;
 
+    private JButton addButton;
+    private JButton editButton;
+    private JButton deleteButton;
+    private JButton doneButton;
+
     public MainFrame() {
 
         setTitle("Todo List Reminder");
@@ -28,8 +33,55 @@ public class MainFrame extends JFrame {
 
         table = new JTable(tableModel);
         JScrollPane scrollPane = new JScrollPane(table);
-
         add(scrollPane, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel();
+
+        addButton = new JButton("Add");
+        editButton = new JButton("Edit");
+        deleteButton = new JButton("Delete");
+        doneButton = new JButton("Done");
+
+        buttonPanel.add(addButton);
+        buttonPanel.add(editButton);
+        buttonPanel.add(deleteButton);
+        buttonPanel.add(doneButton);
+
+        addButton.addActionListener(e -> {
+            JOptionPane.showMessageDialog(this, "Add button clicked");
+        });
+
+        editButton.addActionListener(e -> {
+            int selectedRow = table.getSelectedRow();
+
+            if (selectedRow == -1) {
+                JOptionPane.showMessageDialog(this, "Please select a task first");
+            } else {
+                JOptionPane.showMessageDialog(this, "Edit button clicked");
+            }
+        });
+
+        deleteButton.addActionListener(e -> {
+            int selectedRow = table.getSelectedRow();
+
+            if (selectedRow == -1) {
+                JOptionPane.showMessageDialog(this, "Please select a task first");
+            } else {
+                tableModel.removeRow(selectedRow);
+            }
+        });
+
+        doneButton.addActionListener(e -> {
+            int selectedRow = table.getSelectedRow();
+
+            if (selectedRow == -1) {
+                JOptionPane.showMessageDialog(this, "Please select a task first");
+            } else {
+                tableModel.setValueAt("DONE", selectedRow, 3);
+            }
+        });
+
+        add(buttonPanel, BorderLayout.SOUTH);
 
         setVisible(true);
     }
